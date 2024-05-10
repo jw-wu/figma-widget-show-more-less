@@ -1,0 +1,12 @@
+{
+  "name": "Show more / less",
+  "id": "1369672659954455694",
+  "api": "1.0.0",
+  "editorType": ["figma"],
+  "permissions": [],
+  "containsWidget": true,
+  "main": "dist/code.js",
+  "widgetApi": "1.0.0",
+  "documentAccess": "dynmmic-page",
+  "networkAccess": { "allowedDomains": [ "none" ] }
+}
