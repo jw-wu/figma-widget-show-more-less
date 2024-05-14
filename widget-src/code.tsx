@@ -1,105 +1,181 @@
 const { widget } = figma
-const { AutoLayout, Text, useSyncedState, useWidgetId } = widget
+const { AutoLayout, Text, useSyncedState, useWidgetNodeId, usePropertyMenu } = widget
 
 
-export type FigmaLayerNode =
-  FrameNode | ComponentSetNode | ComponentNode | InstanceNode | GroupNode | SectionNode |
-  RectangleNode | EllipseNode | PolygonNode | StarNode | VectorNode | TextNode | BooleanOperationNode;
-export const isFigmaLayer = (node: SceneNode): node is FigmaLayerNode => (
-  node.type === "FRAME" ||
-  node.type === "COMPONENT_SET" ||
-  node.type === "COMPONENT" ||
-  node.type === "INSTANCE" ||
-  node.type === "GROUP" ||
-  node.type === "SECTION" ||
-  node.type === "RECTANGLE" ||
-  node.type === "ELLIPSE" ||
-  node.type === "POLYGON" ||
-  node.type === "STAR" ||
-  node.type === "VECTOR" ||
-  node.type === "TEXT" ||
-  node.type === "BOOLEAN_OPERATION"
-)
-
-function toggleChildrenVisibility(widgetId: string, visible: boolean) {
-
-  const widget = figma.getNodeById(widgetId),
-        parent = widget?.parent,
-        children = parent?.children
-
-  if (children) {
-
-    for (let child of children) {
-      showHideLayer(child, visible)
-    }
-
-  }
-
-}
-
-
-function showHideLayer(node: SceneNode, visible: boolean) {
-
-  if (isFigmaLayer(node)) {
-
-    if (node.type === 'SECTION') {
-
-      let children = node.children
-      
-      for (let child of children) {
-        showHideLayer(child, visible)
-      }
-
-    }
-
-    else
-      node.visible = visible
-
-  }
-
-}
+import * as config from './config'
+import * as visibility from './scripts/visibility'
+import { settingsIcon } from './assets/icon-settings'
+import { inputField } from './ui/text-input'
+import { divider } from './ui/divider'
+import { button } from './ui/button'
 
 
 function ShowHide() {
 
   const [ visible, setVisibility ] = useSyncedState('visibility', true),
-        [ label, setLabel ] = useSyncedState('label', 'Show less')
+        [ label, setLabel ] = useSyncedState('label', config.defaultValue.labelTextWhenVisible),
+        [ labelTextWhenHidden, setLabelTextWhenHidden ] = useSyncedState('labelTextWhenHidden', config.defaultValue.labelTextWhenHidden),
+        [ labelTextWhenVisible, setLabelTextWhenVisible ] = useSyncedState('labelTextWhenVisible', config.defaultValue.labelTextWhenVisible),
+        [ labelColor, setLabelColor ] = useSyncedState('labelColor', config.color.brand1.primary),
+        [ fontSize, setFontSize ] = useSyncedState('fontSize', config.typography.size.medium),
+        [ padding, setPadding ] = useSyncedState('padding', config.defaultValue.padding)
 
-  const widgetId = useWidgetId()
+  const [ settingsVisible, setSettingsVisibility ] = useSyncedState('settingsVisible', false),
+        [ settingsButtonActive, setSettingsButtonActive ] = useSyncedState('settingsButtonActive', false)
+
+
+  const widgetId = useWidgetNodeId()
+
+  const settingsButton: WidgetPropertyMenuItem = {
+    itemType: 'toggle',
+    tooltip: 'Settings',
+    propertyName: 'settings',
+    isToggled: settingsButtonActive,
+    icon: settingsIcon
+  }
+
+  usePropertyMenu(
+    [
+      settingsButton
+    ],
+    ({ propertyName, propertyValue }) => {
+      
+      if (settingsVisible) {
+        setSettingsVisibility(false)
+        setSettingsButtonActive(false)
+      } else {
+        setSettingsVisibility(true)
+        setSettingsButtonActive(true)
+      }
+
+    },
+  )
 
   return (
     <AutoLayout
-      verticalAlignItems='center'
-      padding={{ left: 0, right: 0, top: 4, bottom: 4 }}
-      onClick={() => {
-
-        if (visible)
-          setLabel('Show less')
-
-        else
-          setLabel('Show more')
-
-        toggleChildrenVisibility(widgetId, visible)
-
-        setVisibility(!visible)
-
-      }}
-      hoverStyle={{
-        fill: '#9747ff',
-      }}
+      direction='vertical'
+      padding={0}
     >
-      <Text
-        fontFamily='Inter'
-        fontSize={14}
-        fill={'#2196F3'}
+
+      {/* Link */}
+
+      <AutoLayout
+        verticalAlignItems='center'
+        padding={{ left: 0, right: 0, top: padding, bottom: padding }}
+        hidden={settingsVisible}
+        onClick={async () => {
+
+          setVisibility(!visible)
+
+          if (visible) {
+            setLabel(labelTextWhenVisible)
+          } else {
+            setLabel(labelTextWhenHidden)
+          }
+
+          await visibility.toggle(widgetId, visible)
+
+        }}
         hoverStyle={{
-          fill: '#ffffff',
+          fill: config.color.default.tertiary,
         }}
       >
+
+        <Text
+          fontFamily={config.typography.family}
+          fontSize={fontSize}
+          fill={labelColor}
+          hoverStyle={{
+            fill: config.color.default.contrast,
+          }}
+        >
           {label}
-      </Text>
+        </Text>
+
+      </AutoLayout>
+
+
+      {/* Settings UI */}
+
+      <AutoLayout
+        direction={'vertical'}
+        spacing={16}
+        padding={{ left: 0, right: 0, top: 16, bottom: 16 }}
+        fill={config.color.surface.primary}
+        stroke={config.color.divider.secondary}
+        cornerRadius={4}
+        height={'hug-contents'}
+        hidden={!settingsVisible}
+      >
+
+        {/* Label when layers are visible */}
+        {inputField({
+          label: 'Label when layers are visible',
+          value: labelTextWhenVisible,
+          placeholder: 'Enter label here',
+          onClick: setLabelTextWhenVisible
+        })}
+
+        {divider({variant: 'secondary'})}
+
+        {/* Label when layers are hidden */}
+        {inputField({
+          label: 'Label when layers are hidden',
+          value: labelTextWhenHidden,
+          placeholder: 'Enter label here',
+          onClick: setLabelTextWhenHidden
+        })}
+
+        {divider({variant: 'secondary'})}
+
+        {/* Font size */}
+        {inputField({
+          label: 'Font size (px)',
+          value: String(fontSize),
+          placeholder: String(fontSize),
+          onClick: setFontSize,
+          inputType: 'number'
+        })}
+
+        {divider({variant: 'secondary'})}
+
+        {/* Label color */}
+        {inputField({
+          label: 'Label color',
+          value: labelColor,
+          placeholder: config.color.brand1.primary,
+          onClick: setLabelColor,
+          inputType: 'hex'
+        })}
+
+        {divider({variant: 'secondary'})}
+
+        {/* Padding */}
+        {inputField({
+          label: 'Top and bottom padding',
+          value: String(padding),
+          placeholder: String(padding),
+          onClick: setPadding,
+          inputType: 'number'
+        })}
+
+        {divider({variant: 'secondary'})}
+
+        {/* Done button */}
+        {button({
+          label: 'Done',
+          onClick: () => {
+            setSettingsVisibility(false)
+            setSettingsButtonActive(false)
+          }
+        })}
+
+      </AutoLayout>
+   
     </AutoLayout>
+
   )
+
 }
 
 widget.register(ShowHide)
