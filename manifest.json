@@ -7,6 +7,6 @@
   "containsWidget": true,
   "main": "dist/code.js",
   "widgetApi": "1.0.0",
-  "documentAccess": "dynmmic-page",
+  "documentAccess": "dynamic-page",
   "networkAccess": { "allowedDomains": [ "none" ] }
 }
